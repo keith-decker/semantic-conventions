@@ -1,8 +1,8 @@
-# Proposal: Workflow and Task Semantic Conventions for GenAI Observability
+# Proposal: Workflow and Step Semantic Conventions for GenAI Observability
 
 ## Summary
 
-This proposal extends the existing [GenAI Agent semantic conventions](https://github.com/open-telemetry/semantic-conventions/blob/main/docs/gen-ai/gen-ai-agent-spans.md) with **Workflow** and **Task** span types to support complex multi-agent systems. It also adds agent context to existing LLM and embedding metrics for better attribution.
+This proposal extends the existing [GenAI Agent semantic conventions](https://github.com/open-telemetry/semantic-conventions/blob/main/docs/gen-ai/gen-ai-agent-spans.md) with **Workflow** and **Step** span types to support complex multi-agent systems. It also adds agent context to existing LLM metrics for better attribution.
 
 ## Motivation
 
@@ -15,32 +15,30 @@ The existing GenAI semantic conventions (as of v1.28.0) include:
 
 ### Gap
 Modern agentic AI systems involve **orchestration** that isn't captured:
-- **Workflows**: Top-level orchestration coordinating multiple agents (e.g., LangGraph graphs, CrewAI crews)
-- **Tasks**: Discrete units of work assigned to or decomposed by agents
-- **Hierarchical relationships**: Workflow → Agents → Tasks → LLM calls
-- **Attribution**: Which agent/task generated which LLM calls and costs
+- **Workflows**: Top-level orchestration coordinating multiple agents (e.g., LangGraph graphs, CrewAI crews) through predefined code paths
+- **Steps**: Discrete units of work((e.g., CrewAI tasks) assigned to agents or a fallback type(e.g., LangGraph chains)
+- **Hierarchical relationships**: Workflow → Steps → Agents → LLM calls
+- **Attribution**: Which agent/step generated which LLM calls and costs
 
-Without workflow and task conventions, we can observe individual agents but not their orchestration or task decomposition.
+Without workflow and step conventions, we can observe individual agents but not their orchestration or step decomposition.
 
 ## Proposed Changes
 
 ### 1. New Span Types
 
-#### `gen_ai.workflow` Span
-Represents a workflow orchestrating multiple agents and tasks.
+#### `workflow` Span
+Represents a workflow orchestrating multiple agents and steps.
 
 **Span Name Format:**
-- `gen_ai.workflow {workflow_name}`
-- Examples: `gen_ai.workflow multi_agent_rag`, `gen_ai.workflow customer_support_pipeline`
+- `workflow {gen_ai.workflow.name}`
+- Examples: `workflow multi_agent_rag`, `workflow customer_support_pipeline`
 
 **Required Attributes:**
 - `gen_ai.workflow.name` (string): Name/identifier of the workflow
-- `gen_ai.operation.name` (string): `"workflow"`
 
 **Optional Attributes:**
-- `gen_ai.workflow.type` (string): Orchestration type (e.g., "sequential", "parallel", "graph", "dynamic")
 - `gen_ai.workflow.description` (string): Human-readable description of workflow's purpose
-- `gen_ai.framework` (string): Framework implementing the workflow (e.g., "langgraph", "crewai", "autogen")
+- `gen_ai.framework` (string): Framework implementing the workflow (e.g., "langgraph", "CrewAI", "OpenAI agents")
 
 **Event Attributes (for content capture):**
 - `gen_ai.input.messages` (any): Input messages that triggered the workflow. Instrumentations MUST follow the [Input messages JSON schema](./gen-ai-input-messages.json).
@@ -49,11 +47,9 @@ Represents a workflow orchestrating multiple agents and tasks.
 **Example:**
 ```json
 {
-  "span_name": "gen_ai.workflow multi_agent_rag",
+  "span_name": "workflow multi_agent_rag",
   "attributes": {
-    "gen_ai.operation.name": "workflow",
     "gen_ai.workflow.name": "multi_agent_rag",
-    "gen_ai.workflow.type": "sequential",
     "gen_ai.workflow.description": "Multi-agent RAG with research, memory, and synthesis",
     "gen_ai.framework": "langgraph"
   },
@@ -95,39 +91,36 @@ Represents a workflow orchestrating multiple agents and tasks.
 }
 ```
 
-#### `gen_ai.task` Span
-Represents a discrete unit of work in an agentic AI system.
+#### `step` Span
+Represents a discrete unit of work for an agent or a fallback type in an agentic AI system.
 
 **Span Name Format:**
-- `gen_ai.task {task_name}`
-- Examples: `gen_ai.task research_task`, `gen_ai.task synthesis_task`
+- `{gen_ai.operation.name} {gen_ai.step.name}`
+- Examples: `step_execution research_step`, `step_execution synthesis_step`
 
 **Required Attributes:**
-- `gen_ai.task.name` (string): Name/identifier of the task
-- `gen_ai.operation.name` (string): `"task"`
+- `gen_ai.operation.name` (string): `"step_created"` or `"step_execution"`
+- `gen_ai.step.name` (string): Name/identifier of the step
 
 **Optional Attributes:**
-- `gen_ai.task.type` (string): Task type (e.g., "research", "planning", "execution", "reflection", "tool_use")
-- `gen_ai.task.objective` (string): What the task aims to achieve
-- `gen_ai.task.source` (string): Where task originated - `"workflow"` or `"agent"`
-- `gen_ai.task.assigned_agent` (string): Name of agent assigned to execute the task (for workflow-assigned tasks)
-- `gen_ai.task.status` (string): Task status (e.g., "pending", "in_progress", "completed", "failed")
+- `gen_ai.step.type` (string): Step type (e.g., "research", "planning", "execution", "reflection", "tool_use")
+- `gen_ai.step.objective` (string): What the step aims to achieve
+- `gen_ai.step.assigned_agent` (string): Name of agent assigned to execute the step (CrewAI's tasks) or a fallback type before agent is invoked (LangGraph chains)
 
 **Event Attributes (for content capture):**
-- `gen_ai.input.messages` (any): Input messages relevant to the task. Instrumentations MUST follow the [Input messages JSON schema](./gen-ai-input-messages.json).
-- `gen_ai.output.messages` (any): Output messages generated by the task. Instrumentations MUST follow the [Output messages JSON schema](./gen-ai-output-messages.json).
+- `gen_ai.input.messages` (any): Input messages relevant to the step. Instrumentations MUST follow the [Input messages JSON schema](./gen-ai-input-messages.json).
+- `gen_ai.output.messages` (any): Output messages generated by the step. Instrumentations MUST follow the [Output messages JSON schema](./gen-ai-output-messages.json).
 
 **Example:**
 ```json
 {
-  "span_name": "gen_ai.task research_task",
+  "span_name": "step_execution research_step",
   "attributes": {
-    "gen_ai.operation.name": "task",
-    "gen_ai.task.name": "research_task",
-    "gen_ai.task.type": "research",
-    "gen_ai.task.objective": "Search and analyze current information",
-    "gen_ai.task.source": "agent",
-    "gen_ai.task.status": "completed"
+    "gen_ai.operation.name": "step_execution",
+    "gen_ai.step.name": "research_step",
+    "gen_ai.step.type": "research",
+    "gen_ai.step.objective": "Search and analyze current information",
+    "gen_ai.step.assigned_agent": "research_agent"
   },
   "events": [
     {
@@ -169,19 +162,19 @@ Represents a discrete unit of work in an agentic AI system.
 
 **Span Hierarchy:**
 ```
-gen_ai.workflow multi_agent_rag
-├── gen_ai.agent invoke_agent research_agent
-│   ├── gen_ai.task research_task
-│   │   └── gen_ai.client chat
-│   └── gen_ai.client chat
-├── gen_ai.agent invoke_agent memory_agent
-│   ├── gen_ai.task memory_retrieval_task
-│   │   └── gen_ai.client chat
-│   └── gen_ai.client embeddings
-└── gen_ai.agent invoke_agent synthesizer_agent
-    ├── gen_ai.task synthesis_task
-    │   └── gen_ai.client chat
-    └── gen_ai.client chat
+workflow multi_agent_rag
+├── step_execution research_step
+│   ├── invoke_agent research_agent
+│   │   └── chat gpt-4
+│   └── chat gpt-4
+├── step_execution memory_retrieval_step
+│   ├── invoke_agent memory_agent
+│   │   └── chat gpt-4
+│   └── embeddings text-embedding-3
+└── step_execution synthesis_step
+    ├── invoke_agent synthesizer_agent
+    │   └── chat gpt-4
+    └── chat gpt-4
 ```
 
 ### 2. New Metrics
@@ -192,9 +185,7 @@ Measures the duration of workflow orchestration.
 **Unit:** `s` (seconds)
 
 **Attributes:**
-- `gen_ai.operation.name` (string): `"workflow"`
 - `gen_ai.workflow.name` (string): Workflow name
-- `gen_ai.workflow.type` (string, optional): Workflow type
 - `gen_ai.framework` (string, optional): Framework name
 
 #### `gen_ai.agent.duration` (Histogram)
@@ -204,22 +195,21 @@ Measures the duration of agent operations (extends existing agent spans with met
 
 **Attributes:**
 - `gen_ai.operation.name` (string): `"create_agent"` or `"invoke_agent"`
-- `gen_ai.agent.name` (string): Agent name
-- `gen_ai.agent.id` (string): Agent execution ID
-- `gen_ai.agent.type` (string, optional): Agent type
+- `gen_ai.agent.name` (string): Human-readable name of the GenAI agent provided by the application.
+- `gen_ai.agent.id` (string): The unique identifier of the GenAI agent.
 - `gen_ai.framework` (string, optional): Framework name
 
-#### `gen_ai.task.duration` (Histogram)
-Measures the duration of task execution.
+#### `gen_ai.step.duration` (Histogram)
+Measures the duration of step execution.
 
 **Unit:** `s` (seconds)
 
 **Attributes:**
-- `gen_ai.operation.name` (string): `"task"`
-- `gen_ai.task.name` (string): Task name
-- `gen_ai.task.type` (string, optional): Task type
-- `gen_ai.task.source` (string, optional): Task source
-- `gen_ai.agent.name` (string, optional): Assigned agent name
+- `gen_ai.operation.name` (string): `"step_created"` or `"step_execution"`
+- `gen_ai.step.name` (string): Step name
+- `gen_ai.step.type` (string, optional): Step type
+- `gen_ai.agent.id` (string, optional): The unique identifier of the GenAI agent.
+- `gen_ai.agent.name` (string, optional): Human-readable name of the GenAI agent provided by the application.
 
 ### 3. Agent Context in Existing Metrics
 
@@ -227,13 +217,13 @@ To enable cost attribution and performance analysis, add agent context to existi
 
 #### `gen_ai.client.operation.duration` Histogram
 **New Optional Attributes:**
-- `gen_ai.agent.name` (string): Name of the agent making the LLM/embedding call
-- `gen_ai.agent.id` (string): ID of the agent execution
+- `gen_ai.agent.name` (string, optional): Human-readable name of the GenAI agent provided by the application.
+- `gen_ai.agent.id` (string, optional): The unique identifier of the GenAI agent.
 
 #### `gen_ai.client.token.usage` Histogram  
 **New Optional Attributes:**
-- `gen_ai.agent.name` (string): Name of the agent making the LLM call
-- `gen_ai.agent.id` (string): ID of the agent execution
+- `gen_ai.agent.name` (string, optional): Human-readable name of the GenAI agent provided by the application.
+- `gen_ai.agent.id` (string, optional): The unique identifier of the GenAI agent.
 
 **Use Cases:**
 - **Cost attribution**: Track token usage and costs per agent
@@ -255,7 +245,8 @@ gen_ai.client.token.usage{
   gen_ai.operation.name="chat",
   gen_ai.request.model="gpt-4",
   gen_ai.token.type="input",
-  gen_ai.agent.name="research_agent"
+  gen_ai.agent.name="research_agent",
+  gen_ai.agent.id="550e8400-e29b-41d4-a716-446655440000"
 } = 1500 tokens
 ```
 
@@ -263,38 +254,36 @@ gen_ai.client.token.usage{
 
 ### Example 1: Multi-Agent Workflow (Complete Hierarchy)
 
-This example shows how workflow, agent, task, and LLM spans work together:
+This example shows how workflow, step, agent, and LLM spans work together:
 
 ```
-gen_ai.workflow multi_agent_rag
-├── gen_ai.agent invoke_agent research_agent
-│   ├── gen_ai.task research_task
-│   │   └── gen_ai.client chat gpt-4
-│   └── gen_ai.client chat gpt-4
-├── gen_ai.agent invoke_agent memory_agent
-│   ├── gen_ai.task memory_retrieval_task
-│   │   └── gen_ai.client chat gpt-4
-│   └── gen_ai.client embeddings text-embedding-3
-└── gen_ai.agent invoke_agent synthesizer_agent
-    ├── gen_ai.task synthesis_task
-    │   └── gen_ai.client chat gpt-4
-    └── gen_ai.client chat gpt-4
+workflow multi_agent_rag
+├── step research_step
+│   ├── invoke_agent research_agent
+│   │   └── chat gpt-4
+│   └── chat gpt-4
+├── step_execution memory_retrieval_step
+│   ├── invoke_agent memory_agent
+│   │   └── chat gpt-4
+│   └── embeddings text-embedding-3
+└── step_execution synthesis_step
+    ├── invoke_agent synthesizer_agent
+    │   └── chat gpt-4
+    └── chat gpt-4
 ```
 
 **Key Relationships:**
-- **Workflow** orchestrates multiple agents sequentially
-- Each **Agent** (research, memory, synthesizer) performs its specialized role
-- Each agent creates **Tasks** to organize its work
-- **LLM calls** are made within task or agent context
+- **Workflow** orchestrates multiple agents through predefined code paths.
+- Each **Agent** (research, memory, synthesizer) performs its specialized role.
+- **Step** can be assigned to an agent or it can be a fallback type.
+- **LLM calls** are made within a step or agent context.
 
 ### Example 2: Complete Metrics for Cost Attribution
 
 ```
 # Workflow duration
 gen_ai.workflow.duration{
-  gen_ai.operation.name="workflow",
   gen_ai.workflow.name="multi_agent_rag",
-  gen_ai.workflow.type="sequential",
   gen_ai.framework="langgraph"
 } = 45.2s
 
@@ -302,30 +291,33 @@ gen_ai.workflow.duration{
 gen_ai.agent.duration{
   gen_ai.operation.name="invoke_agent",
   gen_ai.agent.name="research_agent",
-  gen_ai.agent.type="researcher",
+  gen_ai.agent.id="550e8400-e29b-41d4-a716-446655440000",
   gen_ai.framework="langgraph"
 } = 15.3s
 
-# Task duration
-gen_ai.task.duration{
-  gen_ai.operation.name="task",
-  gen_ai.task.name="research_task",
-  gen_ai.task.type="research",
-  gen_ai.task.source="agent"
+# Step duration
+gen_ai.step.duration{
+  gen_ai.operation.name="step_execution",
+  gen_ai.step.name="research_step",
+  gen_ai.step.type="research",
+  gen_ai.agent.name="research_agent",
+  gen_ai.agent.id="550e8400-e29b-41d4-a716-446655440000"
 } = 12.1s
 
 # LLM calls with agent context (for cost attribution)
 gen_ai.client.operation.duration{
   gen_ai.operation.name="chat",
   gen_ai.request.model="gpt-4",
-  gen_ai.agent.name="research_agent"
+  gen_ai.agent.name="research_agent",
+  gen_ai.agent.id="550e8400-e29b-41d4-a716-446655440000"
 } = 2.1s
 
 gen_ai.client.token.usage{
   gen_ai.operation.name="chat",
   gen_ai.request.model="gpt-4",
   gen_ai.token.type="input",
-  gen_ai.agent.name="research_agent"
+  gen_ai.agent.name="research_agent",
+  gen_ai.agent.id="550e8400-e29b-41d4-a716-446655440000"
 } = 1500 tokens
 ```
 
@@ -338,26 +330,25 @@ gen_ai.client.token.usage{
 
 ### New Workflow Attributes
 
-| Attribute | Type | Description | Requirement Level | Examples |
-|-----------|------|-------------|-------------------|----------|
-| `gen_ai.workflow.name` | string | Name/identifier of the workflow | Required | `"multi_agent_rag"`, `"customer_support"` |
-| `gen_ai.workflow.type` | string | Orchestration type | Recommended | `"sequential"`, `"parallel"`, `"graph"`, `"dynamic"` |
-| `gen_ai.workflow.description` | string | Human-readable description | Optional | `"Multi-agent RAG with research and synthesis"` |
-| `gen_ai.input.messages`† | any | Input messages captured via workflow span events | Optional (event) | `[{"role":"user","parts":[{"type":"text","content":"What are the latest AI developments?"}]}]` |
-| `gen_ai.output.messages`† | any | Output messages captured via workflow span events | Optional (event) | `[{"role":"assistant","parts":[{"type":"text","content":"Based on recent research..."}],"finish_reason":"stop"}]` |
+| Attribute                     | Type | Description | Requirement Level | Examples                                                                                                     |
+|-------------------------------|------|-------------|-------------------|--------------------------------------------------------------------------------------------------------------|
+| `gen_ai.workflow.name`        | string | Name/identifier of the workflow | Required | `"multi_agent_rag"`, `"customer_support"`                                                                    |
+| `gen_ai.workflow.description` | string | Human-readable description | Optional | `"Multi-agent RAG with research and synthesis"`                                                              |
+| `gen_ai.framework`            | string | Orchestration type | Recommended | `"Langraph"`, `"CrewAI"`                                                              |
+| `gen_ai.input.messages`†      | any | Input messages captured via workflow span events | Optional (event) | `[{"role":"user","parts":[{"type":"text","content":"What are the latest AI developments?"}]}]`               |
+| `gen_ai.output.messages`†     | any | Output messages captured via workflow span events | Optional (event) | `[{"role":"assistant","parts":[{"type":"text","content":"Based on recent research..."}],"finish_reason":"stop"}]` |
 
-### New Task Attributes
+### New Step Attributes
 
-| Attribute | Type | Description | Requirement Level | Examples |
-|-----------|------|-------------|-------------------|----------|
-| `gen_ai.task.name` | string | Name/identifier of the task | Required | `"research_task"`, `"synthesis_task"` |
-| `gen_ai.task.type` | string | Task type | Recommended | `"research"`, `"planning"`, `"execution"`, `"reflection"` |
-| `gen_ai.task.objective` | string | What the task aims to achieve | Optional | `"Search and analyze current information"` |
-| `gen_ai.task.source` | string | Where task originated | Optional | `"workflow"`, `"agent"` |
-| `gen_ai.task.assigned_agent` | string | Agent assigned to execute | Optional | `"research_agent"` |
-| `gen_ai.task.status` | string | Task status | Optional | `"pending"`, `"in_progress"`, `"completed"`, `"failed"` |
-| `gen_ai.input.messages`† | any | Input messages captured via task span events | Optional (event) | `[{"role":"user","parts":[{"type":"text","content":"What are the latest AI developments?"}]}]` |
-| `gen_ai.output.messages`† | any | Output messages captured via task span events | Optional (event) | `[{"role":"assistant","parts":[{"type":"text","content":"Recent AI breakthroughs include..."}],"finish_reason":"stop"}]` |
+| Attribute                    | Type | Description                                   | Requirement Level | Examples                                                                                                                 |
+|------------------------------|------|-----------------------------------------------|-------------------|--------------------------------------------------------------------------------------------------------------------------|
+| `gen_ai.operation.name`      | string | Step operation name                           | Required | `"step_created"` or `"step_execution"`                                                                                   |
+| `gen_ai.step.name`           | string | Name/identifier of the step                   | Required | `"research_step"`, `"synthesis_step"`                                                                                    |
+| `gen_ai.step.type`           | string | Step type                                     | Recommended | `"research"`, `"planning"`, `"execution"`, `"reflection"`                                                                |
+| `gen_ai.step.objective`      | string | What the step aims to achieve                 | Optional | `"Search and analyze current information"`                                                                               |
+| `gen_ai.step.assigned_agent` | string | Agent assigned to execute                     | Optional | `"research_agent"`                                                                                                       |
+| `gen_ai.input.messages`†     | any | Input messages captured via step span events  | Optional (event) | `[{"role":"user","parts":[{"type":"text","content":"What are the latest AI developments?"}]}]`                           |
+| `gen_ai.output.messages`†    | any | Output messages captured via step span events | Optional (event) | `[{"role":"assistant","parts":[{"type":"text","content":"Recent AI breakthroughs include..."}],"finish_reason":"stop"}]` |
 
 ### Modified Attributes (Agent Context in Metrics)
 
@@ -368,34 +359,26 @@ gen_ai.client.token.usage{
 
 ## Benefits
 
-1. **Complete Observability**: Full visibility into workflow orchestration, not just individual agents
-2. **Hierarchical Tracing**: Clear lineage from workflow → agents → tasks → LLM calls
-3. **Cost Attribution**: Track token usage and costs per agent in multi-agent systems
-4. **Performance Analysis**: Identify bottlenecks at workflow, agent, or task level
-5. **Debugging**: Pinpoint which component (workflow/agent/task) is causing issues
-6. **Framework Agnostic**: Works across LangGraph, CrewAI, AutoGen, and custom frameworks
+1. **Complete Observability**: Full visibility into workflow orchestration, not just individual agents.
+2. **Hierarchical Tracing**: Clear lineage from workflow → steps → agents → LLM calls.
+3. **Cost Attribution**: Track token usage and costs per agent in multi-agent systems.
+4. **Performance Analysis**: Identify bottlenecks at workflow, step or agent level.
+5. **Debugging**: Pinpoint which component (workflow/step/agent) is causing issues.
+6. **Framework Agnostic**: Works across LangGraph, CrewAI, OpenAI agents and custom frameworks.
 
 ## Backward Compatibility
 
 - **Fully backward compatible**: All new span types and attributes are additive
 - **Existing agent spans unchanged**: `create_agent` and `invoke_agent` continue to work as defined
-- **Optional agent context**: Adding `gen_ai.agent.name` to metrics is optional
-- **Incremental adoption**: Frameworks can add workflow/task spans independently
-
-## Open Questions
-
-1. **Workflow State**: Should we capture intermediate workflow state as events?
-2. **Task Dependencies**: How to represent task dependencies in parallel workflows?
-3. **Dynamic Workflows**: How to handle workflows that create agents/tasks dynamically?
-4. **Tool Invocations**: Should tool calls have their own span type or remain as events within tasks?
-5. **Agent Communication**: How to represent inter-agent messages in collaborative workflows?
+- **Optional agent context**: Adding `gen_ai.agent.name` and `gen_ai.agent.id` to metrics is optional
+- **Incremental adoption**: Frameworks can add workflow/step spans independently
 
 ## References
 
 - [OpenTelemetry GenAI Semantic Conventions](https://opentelemetry.io/docs/specs/semconv/gen-ai/)
 - [LangGraph Documentation](https://langchain-ai.github.io/langgraph/)
 - [CrewAI Documentation](https://docs.crewai.com/)
-- [AutoGen Documentation](https://microsoft.github.io/autogen/)
+- [OpenAI agents Documentation](https://platform.openai.com/docs/guides/agents)
 
 ## Implementation Status
 
