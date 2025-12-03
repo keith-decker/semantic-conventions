@@ -103,9 +103,9 @@ Represents a discrete unit of work for an agent or a fallback type in an agentic
 - `gen_ai.step.name` (string): Name/identifier of the step
 
 **Optional Attributes:**
-- `gen_ai.step.type` (string): Step type (e.g., "research", "planning", "execution", "reflection", "tool_use")
+- `gen_ai.step.description` (string): Description about the step (e.g., "research", "planning", "execution", "reflection", "tool_use")
 - `gen_ai.step.objective` (string): What the step aims to achieve
-- `gen_ai.step.assigned_agent` (string): Name of agent assigned to execute the step (CrewAI's tasks) or a fallback type before agent is invoked (LangGraph chains)
+- `gen_ai.step.assigned_agents` (string[]): Name of agents assigned to execute the step.
 
 **Event Attributes (for content capture):**
 - `gen_ai.input.messages` (any): Input messages relevant to the step. Instrumentations MUST follow the [Input messages JSON schema](./gen-ai-input-messages.json).
@@ -118,9 +118,9 @@ Represents a discrete unit of work for an agent or a fallback type in an agentic
   "attributes": {
     "gen_ai.operation.name": "step_execution",
     "gen_ai.step.name": "research_step",
-    "gen_ai.step.type": "research",
+    "gen_ai.step.description": "research",
     "gen_ai.step.objective": "Search and analyze current information",
-    "gen_ai.step.assigned_agent": "research_agent"
+    "gen_ai.step.assigned_agents": "research_agent"
   },
   "events": [
     {
@@ -207,7 +207,7 @@ Measures the duration of step execution.
 **Attributes:**
 - `gen_ai.operation.name` (string): `"step_created"` or `"step_execution"`
 - `gen_ai.step.name` (string): Step name
-- `gen_ai.step.type` (string, optional): Step type
+- `gen_ai.step.description` (string, optional): Description about the step
 - `gen_ai.agent.id` (string, optional): The unique identifier of the GenAI agent.
 - `gen_ai.agent.name` (string, optional): Human-readable name of the GenAI agent provided by the application.
 
@@ -299,7 +299,7 @@ gen_ai.agent.duration{
 gen_ai.step.duration{
   gen_ai.operation.name="step_execution",
   gen_ai.step.name="research_step",
-  gen_ai.step.type="research",
+  gen_ai.step.description="research",
   gen_ai.agent.name="research_agent",
   gen_ai.agent.id="550e8400-e29b-41d4-a716-446655440000"
 } = 12.1s
@@ -340,15 +340,15 @@ gen_ai.client.token.usage{
 
 ### New Step Attributes
 
-| Attribute                    | Type | Description                                   | Requirement Level | Examples                                                                                                                 |
-|------------------------------|------|-----------------------------------------------|-------------------|--------------------------------------------------------------------------------------------------------------------------|
-| `gen_ai.operation.name`      | string | Step operation name                           | Required | `"step_created"` or `"step_execution"`                                                                                   |
-| `gen_ai.step.name`           | string | Name/identifier of the step                   | Required | `"research_step"`, `"synthesis_step"`                                                                                    |
-| `gen_ai.step.type`           | string | Step type                                     | Recommended | `"research"`, `"planning"`, `"execution"`, `"reflection"`                                                                |
-| `gen_ai.step.objective`      | string | What the step aims to achieve                 | Optional | `"Search and analyze current information"`                                                                               |
-| `gen_ai.step.assigned_agent` | string | Agent assigned to execute                     | Optional | `"research_agent"`                                                                                                       |
-| `gen_ai.input.messages`†     | any | Input messages captured via step span events  | Optional (event) | `[{"role":"user","parts":[{"type":"text","content":"What are the latest AI developments?"}]}]`                           |
-| `gen_ai.output.messages`†    | any | Output messages captured via step span events | Optional (event) | `[{"role":"assistant","parts":[{"type":"text","content":"Recent AI breakthroughs include..."}],"finish_reason":"stop"}]` |
+| Attribute                     | Type     | Description                                   | Requirement Level | Examples                                                                                                                 |
+|-------------------------------|----------|-----------------------------------------------|-------------------|--------------------------------------------------------------------------------------------------------------------------|
+| `gen_ai.operation.name`       | string   | Step operation name                           | Required          | `"step_created"` or `"step_execution"`                                                                                   |
+| `gen_ai.step.name`            | string   | Name/identifier of the step                   | Required          | `"research_step"`, `"synthesis_step"`                                                                                    |
+| `gen_ai.step.description`     | string   | Description about step                        | Optional          | `"research"`, `"planning"`, `"execution"`, `"reflection"`                                                                |
+| `gen_ai.step.objective`       | string   | What the step aims to achieve                 | Optional          | `"Search and analyze current information"`                                                                               |
+| `gen_ai.step.assigned_agents` | string[] | Agent assigned to execute                     | Optional          | `"research_agent"`                                                                                                       |
+| `gen_ai.input.messages`†      | any      | Input messages captured via step span events  | Optional (event)  | `[{"role":"user","parts":[{"type":"text","content":"What are the latest AI developments?"}]}]`                           |
+| `gen_ai.output.messages`†     | any      | Output messages captured via step span events | Optional (event)  | `[{"role":"assistant","parts":[{"type":"text","content":"Recent AI breakthroughs include..."}],"finish_reason":"stop"}]` |
 
 ### Modified Attributes (Agent Context in Metrics)
 
