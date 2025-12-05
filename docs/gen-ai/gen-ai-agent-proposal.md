@@ -95,11 +95,10 @@ Represents a workflow orchestrating multiple agents and steps.
 Represents a discrete unit of work for an agent or a fallback type in an agentic AI system.
 
 **Span Name Format:**
-- `{gen_ai.operation.name} {gen_ai.step.name}`
-- Examples: `step_execution research_step`, `step_execution synthesis_step`
+- `step {gen_ai.step.name}`
+- Examples: `step research_step`, `step synthesis_step`
 
 **Required Attributes:**
-- `gen_ai.operation.name` (string): `"step_created"` or `"step_execution"`
 - `gen_ai.step.name` (string): Name/identifier of the step
 
 **Optional Attributes:**
@@ -114,9 +113,8 @@ Represents a discrete unit of work for an agent or a fallback type in an agentic
 **Example:**
 ```json
 {
-  "span_name": "step_execution research_step",
+  "span_name": "step research_step",
   "attributes": {
-    "gen_ai.operation.name": "step_execution",
     "gen_ai.step.name": "research_step",
     "gen_ai.step.description": "research",
     "gen_ai.step.objective": "Search and analyze current information",
@@ -163,15 +161,15 @@ Represents a discrete unit of work for an agent or a fallback type in an agentic
 **Span Hierarchy:**
 ```
 workflow multi_agent_rag
-├── step_execution research_step
+├── step research_step
 │   ├── invoke_agent research_agent
 │   │   └── chat gpt-4
 │   └── chat gpt-4
-├── step_execution memory_retrieval_step
+├── step memory_retrieval_step
 │   ├── invoke_agent memory_agent
 │   │   └── chat gpt-4
 │   └── embeddings text-embedding-3
-└── step_execution synthesis_step
+└── step synthesis_step
     ├── invoke_agent synthesizer_agent
     │   └── chat gpt-4
     └── chat gpt-4
@@ -205,7 +203,6 @@ Measures the duration of step execution.
 **Unit:** `s` (seconds)
 
 **Attributes:**
-- `gen_ai.operation.name` (string): `"step_created"` or `"step_execution"`
 - `gen_ai.step.name` (string): Step name
 - `gen_ai.step.description` (string, optional): Description about the step
 - `gen_ai.agent.id` (string, optional): The unique identifier of the GenAI agent.
@@ -262,11 +259,11 @@ workflow multi_agent_rag
 │   ├── invoke_agent research_agent
 │   │   └── chat gpt-4
 │   └── chat gpt-4
-├── step_execution memory_retrieval_step
+├── step memory_retrieval_step
 │   ├── invoke_agent memory_agent
 │   │   └── chat gpt-4
 │   └── embeddings text-embedding-3
-└── step_execution synthesis_step
+└── step synthesis_step
     ├── invoke_agent synthesizer_agent
     │   └── chat gpt-4
     └── chat gpt-4
@@ -297,7 +294,6 @@ gen_ai.agent.duration{
 
 # Step duration
 gen_ai.step.duration{
-  gen_ai.operation.name="step_execution",
   gen_ai.step.name="research_step",
   gen_ai.step.description="research",
   gen_ai.agent.name="research_agent",
@@ -342,7 +338,6 @@ gen_ai.client.token.usage{
 
 | Attribute                     | Type     | Description                                   | Requirement Level | Examples                                                                                                                 |
 |-------------------------------|----------|-----------------------------------------------|-------------------|--------------------------------------------------------------------------------------------------------------------------|
-| `gen_ai.operation.name`       | string   | Step operation name                           | Required          | `"step_created"` or `"step_execution"`                                                                                   |
 | `gen_ai.step.name`            | string   | Name/identifier of the step                   | Required          | `"research_step"`, `"synthesis_step"`                                                                                    |
 | `gen_ai.step.description`     | string   | Description about step                        | Optional          | `"research"`, `"planning"`, `"execution"`, `"reflection"`                                                                |
 | `gen_ai.step.objective`       | string   | What the step aims to achieve                 | Optional          | `"Search and analyze current information"`                                                                               |
