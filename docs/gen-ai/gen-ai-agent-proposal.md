@@ -378,12 +378,7 @@ gen_ai.client.token.usage{
 ## Implementation Status
 
 This proposal has been implemented and validated in:
-- **opentelemetry-python-contrib**: `opentelemetry-util-genai-dev` package
-- **Frameworks tested**: LangGraph (multi-agent RAG, single-agent MCP)
+- **opentelemetry-python-contrib**: `opentelemetry-util-genai` package extended with workflow and step span support(POC)
+- **Frameworks tested**: LangGraph, CrewAI and OpenAI agents
 - **Production usage**: Running in Kubernetes with Splunk Observability Cloud
 
-### Example Applications
-1. **Multi-Agent RAG System**: Research agent + Memory agent + Synthesizer agent
-2. **Single-Agent Weather Assistant**: ReAct agent with MCP tool integration
-
-Both applications successfully emit agent spans, metrics, and maintain proper trace hierarchy.
